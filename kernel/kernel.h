@@ -122,8 +122,8 @@ void syscall(struct context *ctx);
 #define USER_MAX_ADDR VADDR(767, 0)
 #define USER_MIN_ADDR VADDR(1, 0)
 
-#define KERNBASE  VADDR(768, 0)
-#define R(x) ((x)-KERNBASE)
+#define KERNBASE  VADDR(0xC00, 0)
+#define R(x) ((x)+KERNBASE)
 
 #define NR_KERN_PAGETABLE 20
 

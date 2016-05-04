@@ -1,8 +1,6 @@
 #include "uart.h"
 #include "timer.h"
 
-extern void _enable_interrupts();
-extern void _disable_interrupts();
 extern arm_timer_t *ArmTimer;
 
 void common_irq_handler(void)

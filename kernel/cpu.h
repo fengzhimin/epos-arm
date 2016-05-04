@@ -22,16 +22,26 @@
 
 #include <inttypes.h>
 
-/*
+
 static __inline void cli()
 {
-    __asm__ __volatile__("cli");
+    asm volatile(
+      "mrs r0, cpsr\n\t"
+    	"bic r0, r0, #0x80\n\t"
+    	"msr cpsr_c, r0\n\t"
+    	"mov pc, lr\n\t"
+    );
 }
 static __inline void sti()
 {
-    __asm__ __volatile__("sti");
+    asm volatile(
+      "mrs r0, cpsr\n\t"
+      "orr r0, r0, #0x80\n\t"
+      "msr cpsr_c, r0\n\t"
+      "mov pc, lr\n\t"
+    );
 }
-
+/*
 static __inline void
 cpu_idle()
 {
@@ -71,7 +81,7 @@ invltlb(void)
 }
 */
 #define PAGE_SHIFT  12
-#define PGDR_SHIFT  22
+#define PGDR_SHIFT  20
 #define PAGE_SIZE   (1<<PAGE_SHIFT)
 #define PAGE_MASK   (PAGE_SIZE-1)
 #define PAGE_TRUNCATE(x)  ((x)&(~PAGE_MASK))

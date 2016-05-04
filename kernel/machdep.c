@@ -33,7 +33,6 @@
 #define __XSTRING(x)    __STRING(x)     /* expand x, then stringify */
 
 extern unsigned int _end;
-extern void _enable_interrupts();
 
 /*计算机启动时，自1970-01-01 00:00:00 +0000 (UTC)以来的秒数*/
 time_t g_startup_time;
@@ -95,47 +94,27 @@ static uint32_t init_paging(uint32_t physfree)
     pgdir=(uint32_t *)physfree;
     physfree += 1<<14;//physfree += PAGE_SIZE;
     pte = (uint32_t *)physfree;
-    //memset(pgdir, 0, 1<<14);
+    memset(pgdir, 0, 1<<14);
 
-    /*
-     * 分配小页表，并填充页目录
-
-    for(i = 0; i < NR_KERN_PAGETABLE; i++) {
-        pgdir[i                       ]=
-        pgdir[i+(KERNBASE>>PGDR_SHIFT)]=physfree|PTE_V|PTE_W;
-        memset((void *)physfree, 0, PAGE_SIZE);
-        physfree+=PAGE_SIZE;
-    }
-    */
     /*分配20张小页表 并且将填充页目录*/
-    for(i = 0; i < 20; i++)
+    for(i = 0; i < NR_KERN_PAGETABLE; i++)
     {
-        pgdir[i] = pgdir[i+(0xC0000000>>20)] = (physfree&0xFFFFFC00)|1;
-        //memset((void *)physfree, 0, 1<<10);
-        physfree += 1<<10;
+        pgdir[i] = pgdir[i+(KERNBASE>>PGDR_SHIFT)] = (physfree&0xFFFFFC00)|PTE_V;
+        memset((void *)physfree, 0, (1<<10));
+        physfree += (1<<10);
     }
 
-    /*设置恒等隐射，填充小页表 隐射物理地址为[0, 0x800000] 虚拟地址[0, 0x800000] [0xC0000000, 0xC0800000]*/
-    for(i = 0; i < 0x1100; i++)
+    /*设置恒等隐射，填充小页表 隐射物理地址为[0, &_end] 虚拟地址[0, &_end] [KERNBASE, R(&_end)]*/
+    for(i = 0; i < (PAGE_ROUNDUP((unsigned int)(&_end)>>12)); i++)
     {
-        pte[i] = ((i<<12)&0xFFFFF000)|0xFF|2;
+        pte[i] = ((i<<12)&0xFFFFF000)|0xFF|PTE_W;
     }
 
-    /*设置IO端口隐射，物理地址为[20000000, 20220000]*/
-    for(i = 0; i < 0x220; i++)
-        pte[0x1100+i] = ((0x20000000+(i<<12))&0xFFFFF000)|0xFF|2;
-    /*
-     * 映射映射虚拟地址[0, R(&end)]和[KERNBASE, &end]到物理地址[0, R(&end)]
-
-    pte=(uint32_t *)(PAGE_TRUNCATE(pgdir[0]));
-    for(i = 0; i < (uint32_t)(pgdir); i+=PAGE_SIZE)
-        pte[i>>PAGE_SHIFT]=(i)|PTE_V|PTE_W;
+    /*设置IO端口隐射，物理地址为[20000000, 20220000] 虚拟地址[0xC1000000 0xC1220000]
+    从第17张小页表开始隐射IO设备地址 第17张小页表的第一项index是0x1000
     */
-    /*
-     * 映射页目录及页表
-
-    pgdir[(KERNBASE>>PGDR_SHIFT)-1]=(uint32_t)(pgdir)|PTE_V|PTE_W;
-     */
+    for(i = 0; i < 0x220; i++)
+        pte[0x1000+i] = ((0x20000000+(i<<12))&0xFFFFF000)|0xFF|PTE_W;
 
     /*
      * 打开分页
@@ -150,7 +129,7 @@ static uint32_t init_paging(uint32_t physfree)
              "mov r0,r0\n"
              "mov r0,r0\n"
              :
-             : "r" (pgdir)
+             : "r" (pgdir)//(pgdir+0xC0000000)
              : "r0"
      );
 
@@ -159,44 +138,15 @@ static uint32_t init_paging(uint32_t physfree)
 
 /**
  * 初始化物理内存
-
-static void init_ram(multiboot_memory_map_t *mmap,
-        uint32_t size,
-        uint32_t physfree)
+*/
+static void init_ram(uint32_t physfree)
 {
-    int n = 0;
-
-    for (; size;
-            size -= (mmap->size+sizeof(mmap->size)),
-            mmap = (multiboot_memory_map_t *) ((uint32_t)mmap +
-                                               mmap->size +
-                                               sizeof (mmap->size))) {
-        if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
-            g_ram_zone[n  ] = PAGE_TRUNCATE(mmap->addr&0xffffffff);
-            g_ram_zone[n+1] = PAGE_TRUNCATE(g_ram_zone[n]+(mmap->len&0xffffffff));
-
-            //扣除内核所占的物理内存
-            if((physfree >  g_ram_zone[n  ]) &&
-               (physfree <= g_ram_zone[n+1]))
-                g_ram_zone[n]=physfree;
-
-            //为8086模式保留0-4KiB的物理内存
-            if((PAGE_SIZE >  g_ram_zone[n  ]) &&
-               (PAGE_SIZE <= g_ram_zone[n+1]))
-                g_ram_zone[n]=PAGE_SIZE;
-
-            if(g_ram_zone[n+1] >= g_ram_zone[n] + PAGE_SIZE) {
-                n += 2;
-                if(n + 2 >= RAM_ZONE_LEN)
-                    break;
-            }
-        }
-    }
-
-    g_ram_zone[n  ] = 0;
-    g_ram_zone[n+1] = 0;
+    g_ram_zone[0] = physfree;
+    g_ram_zone[1] = 0x1FFFFFFF;
+    g_ram_zone[2] = 0;
+    g_ram_zone[3] = 0;
 }
- */
+
 
 
 /**
@@ -205,11 +155,9 @@ static void init_ram(multiboot_memory_map_t *mmap,
 static void md_startup(uint32_t mbi, uint32_t physfree)
 {
     physfree=init_paging(physfree);
-/*
-    init_ram((void *)(((multiboot_info_t *)mbi)->mmap_addr),
-             ((multiboot_info_t *)mbi)->mmap_length,
-             physfree);
-*/
+
+    init_ram(physfree);
+
 
     //init_i8259(ICU_IDT_OFFSET);
     //init_i8253(HZ);
@@ -222,33 +170,49 @@ void cstart(uint32_t magic, uint32_t mbi)
 {
     //uint32_t end = PAGE_ROUNDUP(R((uint32_t)(&_end)))+(0x1<<14);
     unsigned int end = (unsigned int)(&_end+(0x1<<14))&0xffffc000;
+    unsigned int * page_base = (unsigned int *)(end + 0xC0000000);
 
     /*
      * 机器相关（Machine Dependent）的初始化
      */
     md_startup(mbi, end);
-
+    unsigned int physfree = end;
     /*
      * 分页已经打开，切换到虚拟地址运行
      */
      /* 重定位内核*/
      	asm volatile(
      		"mov r0, pc\n\t"
-     		"add r0, r0, #0xc0000000\n\t"
-     		"add lr, lr, #0xC0000000\n\t"
-     		"add sp, sp, #0xC0000000\n\t"
-     		"add pc, r0, #0xc\n\t"
+     		"add r0, r0, #0xC0000000\n\t"
+     		"add r13, r13, #0xC0000000\n\t"
+        "add r14, r14, #0xC0000000\n\t"
+     		"add pc, r0, #0xC\n\t"
      	);
 
-    init_arm_timer(Kernel_1Hz);
-	  _enable_interrupts();
-    uart_init();
-    char *_ch1 = "init epos kernel success!\r\n";
+      init_arm_timer(Kernel_1Hz);
+      cli();
+      uart_init();
+      char *_ch1 = "0x00000000\r\n";
+      HexToString(physfree, _ch1);
+      uart_puts(_ch1);
+      sleep(2000);
+
+    /* 清除恒等隐射
     int i;
+    for(i= 0; i < NR_KERN_PAGETABLE; i++)
+      page_base[i] = 0;
+*/
     while(1)
     {
-      uart_puts(_ch1);
+      int i;
+      for(i = 0; i < 20; i++)
+      {
+        HexToString(page_base[i], _ch1);
+        uart_puts(_ch1);
+      }
+
       sleep(500);
+      sti();
     }
 
     /*
