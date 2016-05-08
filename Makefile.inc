@@ -13,3 +13,4 @@ READELF=	$(CROSS)readelf
 RANLIB=		$(CROSS)ranlib
 NM=		$(CROSS)nm
 GDB=		$(CROSS)gdb
+OBJDUMP= $(CROSS)objdump

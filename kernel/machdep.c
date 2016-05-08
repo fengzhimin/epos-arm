@@ -33,6 +33,7 @@
 #define __XSTRING(x)    __STRING(x)     /* expand x, then stringify */
 
 extern unsigned int _end;
+extern void _enable_interrupts();
 
 /*计算机启动时，自1970-01-01 00:00:00 +0000 (UTC)以来的秒数*/
 time_t g_startup_time;
@@ -99,22 +100,44 @@ static uint32_t init_paging(uint32_t physfree)
     /*分配20张小页表 并且将填充页目录*/
     for(i = 0; i < NR_KERN_PAGETABLE; i++)
     {
-        pgdir[i] = pgdir[i+(KERNBASE>>PGDR_SHIFT)] = (physfree&0xFFFFFC00)|PTE_V;
+        pgdir[i] = pgdir[i+(KERNBASE>>PGDR_SHIFT)] = (physfree)|PTE_V;
         memset((void *)physfree, 0, (1<<10));
         physfree += (1<<10);
     }
 
+    /*单独给中断向量表分配一张小页表*/
+    pgdir[0xFFF] = physfree|PTE_V;
+    memset((void *)physfree, 0, (1<<10));
+    physfree += (1<<10);
+
     /*设置恒等隐射，填充小页表 隐射物理地址为[0, &_end] 虚拟地址[0, &_end] [KERNBASE, R(&_end)]*/
-    for(i = 0; i < (PAGE_ROUNDUP((unsigned int)(&_end)>>12)); i++)
+    for(i = 0; i < (PAGE_ROUNDUP(physfree)>>12); i++)
     {
-        pte[i] = ((i<<12)&0xFFFFF000)|0xFF|PTE_W;
+      pte[i] = (i<<12)|PTE_W|PTE_V;
     }
 
     /*设置IO端口隐射，物理地址为[20000000, 20220000] 虚拟地址[0xC1000000 0xC1220000]
     从第17张小页表开始隐射IO设备地址 第17张小页表的第一项index是0x1000
     */
     for(i = 0; i < 0x220; i++)
-        pte[0x1000+i] = ((0x20000000+(i<<12))&0xFFFFF000)|0xFF|PTE_W;
+        pte[0x1000+i] = ((0x20000000+(i<<12))&0xFFFFF000)|PTE_V|PTE_W;
+
+    /*隐射中断向量表，物理地址为[0x00000000, 0x00001000] 虚拟地址[0xFFFF0000, 0xFFFF1000]*/
+    pte[20*256+0xF0] = 0x00000000|PTE_V|PTE_W;   /*20*2^8+0xF0 为0xFFFF0000的页表项*/
+
+    /*
+        for(i = 0 ; i < 4; i++) {
+          pgdir[0xbff-i]=(((uint32_t)pgdir)+i*(1<<12))|PTE_V;
+        }
+    */
+
+    /*
+    * 开启中断向量表高地址隐射(0xFFFFF000~0xFFFFF001C)
+
+    asm(
+            "mvn r0,#0x0\n"
+            "mcr p15, 0, r0, c12, c0, 0\n"
+    );*/
 
     /*
      * 打开分页
@@ -125,7 +148,6 @@ static uint32_t init_paging(uint32_t physfree)
              "mcr p15,0,r0,c3,c0,0\n"
              "mov r0,#0x1\n"
              "mcr p15,0,r0,c1,c0,0\n"
-             "mov r0,r0\n"
              "mov r0,r0\n"
              "mov r0,r0\n"
              :
@@ -158,10 +180,10 @@ static void md_startup(uint32_t mbi, uint32_t physfree)
 
     init_ram(physfree);
 
-
     //init_i8259(ICU_IDT_OFFSET);
     //init_i8253(HZ);
 }
+
 
 /**
  * 这个函数是内核的C语言入口，被entry.S调用
@@ -169,50 +191,85 @@ static void md_startup(uint32_t mbi, uint32_t physfree)
 void cstart(uint32_t magic, uint32_t mbi)
 {
     //uint32_t end = PAGE_ROUNDUP(R((uint32_t)(&_end)))+(0x1<<14);
-    unsigned int end = (unsigned int)(&_end+(0x1<<14))&0xffffc000;
-    unsigned int * page_base = (unsigned int *)(end + 0xC0000000);
+    unsigned int end = (unsigned int)(((&_end+(0x1<<14))))&0xffffc000;
+    unsigned int * page_base = (unsigned int *)(end)-0xC0000000;
 
     /*
      * 机器相关（Machine Dependent）的初始化
      */
-    md_startup(mbi, end);
+    md_startup(mbi, end-0xC0000000);
+
     unsigned int physfree = end;
+
+    uart_init();
+    char *_ch1 = "0x00000000\r\n";
+    //HexToString(physfree, _ch1);
+    //uart_puts(_ch1);
+    init_arm_timer(Kernel_1Hz);
+    _enable_interrupts();
+
     /*
      * 分页已经打开，切换到虚拟地址运行
      */
-     /* 重定位内核*/
-     	asm volatile(
-     		"mov r0, pc\n\t"
-     		"add r0, r0, #0xC0000000\n\t"
-     		"add r13, r13, #0xC0000000\n\t"
-        "add r14, r14, #0xC0000000\n\t"
-     		"add pc, r0, #0xC\n\t"
-     	);
+     /*重定位内核*/
+     asm (
+       "add sp, sp, #0xC0000000\n\t"
+     );
 
-      init_arm_timer(Kernel_1Hz);
-      cli();
-      uart_init();
-      char *_ch1 = "0x00000000\r\n";
-      HexToString(physfree, _ch1);
-      uart_puts(_ch1);
-      sleep(2000);
+      unsigned int register_value[16];
 
-    /* 清除恒等隐射
-    int i;
-    for(i= 0; i < NR_KERN_PAGETABLE; i++)
-      page_base[i] = 0;
-*/
+    	asm(
+    					"str r0, %0\n"
+              "str r1, %1\n"
+              "str r2, %2\n"
+              "str r3, %3\n"
+              "str r4, %4\n"
+              "str r5, %5\n"
+              "str r6, %6\n"
+              "str r7, %7\n"
+              "str r8, %8\n"
+              "str r9, %9\n"
+              "str r10, %10\n"
+              "str r11, %11\n"
+              "str r12, %12\n"
+              "str r13, %13\n"
+              "str r14, %14\n"
+              "str r15, %15\n"
+    					: "=m"(register_value[0]), "=m"(register_value[1]),"=m"(register_value[2]),
+                "=m"(register_value[3]), "=m"(register_value[4]),"=m"(register_value[5]),
+                "=m"(register_value[6]), "=m"(register_value[7]),"=m"(register_value[8]),
+                "=m"(register_value[9]), "=m"(register_value[10]),"=m"(register_value[11]),
+                "=m"(register_value[12]), "=m"(register_value[13]),"=m"(register_value[14]),
+                "=m"(register_value[15])
+    	);
+    	char *_temp = "0000000000\r\n";
+      int i;
+      for(i = 0; i < 16; i++)
+      {
+        HexToString(register_value[i], _temp);
+      	uart_puts(_temp);
+      }
+
+      /* 清除恒等隐射 */
+      for(i= 1; i < NR_KERN_PAGETABLE; i++)
+        page_base[i] = 0;
+
     while(1)
     {
-      int i;
       for(i = 0; i < 20; i++)
       {
         HexToString(page_base[i], _ch1);
         uart_puts(_ch1);
       }
 
+      for(i = 0; i < 20; i++)
+      {
+        HexToString(page_base[i+0xC00], _ch1);
+        uart_puts(_ch1);
+      }
+
       sleep(500);
-      sti();
+      //sti();
     }
 
     /*

@@ -23,7 +23,7 @@
 #include <inttypes.h>
 
 
-static __inline void cli()
+static void cli()
 {
     asm volatile(
       "mrs r0, cpsr\n\t"
@@ -32,7 +32,7 @@ static __inline void cli()
     	"mov pc, lr\n\t"
     );
 }
-static __inline void sti()
+static void sti()
 {
     asm volatile(
       "mrs r0, cpsr\n\t"

@@ -55,51 +55,89 @@ _entry:
     _vector_irq: .word __vector_irq
     _vector_fiq: .word __vector_fiq
 
-    __vector_reset:
-    mov 	r0, #0x8000
-    mov	r1, #0x0000
-    ldmia	r0!, {r2, r3, r4, r5, r6, r7, r8, r9}
-    stmia	r1!, {r2, r3, r4, r5, r6, r7, r8, r9}
-    ldmia	r0!, {r2, r3, r4, r5, r6, r7, r8, r9}
-    stmia	r1!, {r2, r3, r4, r5, r6, r7, r8, r9}
+  __vector_reset:
+  	mov 	r0, #0x8000
+  	mov	r1, #0x0000
+  	ldmia	r0!, {r2, r3, r4, r5, r6, r7, r8, r9}
+  	stmia	r1!, {r2, r3, r4, r5, r6, r7, r8, r9}
+  	ldmia	r0!, {r2, r3, r4, r5, r6, r7, r8, r9}
+  	stmia	r1!, {r2, r3, r4, r5, r6, r7, r8, r9}
 
-    // We're going to use interrupt mode, so setup the interrupt mode
-    // stack pointer which differs to the application stack pointer:
-    mov r0, #(CPSR_MODE_IRQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
-    mov sp, #0x8000
+  	// We're going to use interrupt mode, so setup the interrupt mode
+  	// stack pointer which differs to the application stack pointer:
+  	mov r0, #(CPSR_MODE_IRQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+  	msr cpsr_c, r0
+  	mov sp, #0x8000
 
-    mov r0,#CPSR_MODE_UNDEFINED
-    msr cpsr_c, r0
-    mov sp, #0x5000
+  	mov r0, #(CPSR_MODE_ABORT | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+  	msr cpsr_c, r0
+  	mov sp, #0x7000
 
-    // Switch back to supervisor mode (our application mode) and
-    // set the stack pointer towards the end of RAM. Remember that the
-    // stack works its way down memory, our heap will work it's way
-    // up memory toward the application stack.
-    mov r0, #(CPSR_MODE_SVR | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
+  	mov r0, #(CPSR_MODE_SYSTEM | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+  	msr cpsr_c, r0
+  	mov sp, #0x6000
 
-    mov     sp, #0x4000
-    sub     sp, sp, #0x4
+  	mov r0, #(CPSR_MODE_UNDEFINED | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+  	msr cpsr_c, r0
+  	mov sp, #0x5000
+
+  	// Switch back to supervisor mode (our application mode) and
+  	// set the stack pointer towards the end of RAM. Remember that the
+  	// stack works its way down memory, our heap will work it's way
+  	// up memory toward the application stack.
+  	mov r0, #(CPSR_MODE_SVR | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+  	msr cpsr_c, r0
+
+  	mov     sp, #0x4000
+  	sub     sp, sp, #0x4
 
     /* Now enter the C main function... */
     bl cstart
 
-    halt:
+halt:
 	wfe
 	b halt
 
 __vector_undefined:
-	nop
+	sub r14, r14, #4
+	stmfd r13!, {r0-r3, r15}
+
+	bl common_undef_handler
+
+	ldmfd r13!, {r0-r3, pc}^
+
 __vector_swi:
-	nop
+	sub r14, r14, #4
+	stmfd r13!, {r0-r3, r14}
+
+	bl common_swi_handler
+
+	ldmfd r13!, {r0-r3, pc}^
+
 __vector_prefetch_abort:
-	nop
+	sub r14, r14, #4
+	stmfd r13!, {r0-r3, r14}
+
+	bl common_pref_handler
+
+	ldmfd r13!, {r0-r3, pc}^
+
 __vector_data_abort:
-	nop
+	sub r14, r14, #4
+	stmfd r13!, {r0-r3, r14}
+
+	bl common_Dabt_handler
+
+	ldmfd r13!, {r0-r3, pc}^
+
 __vector_reserved:
-	nop
+	sub r14, r14, #4
+	stmfd r13!, {r0-r3, r14}
+
+	bl common_res_handler
+
+	ldmfd r13!, {r0-r3, pc}^
+
 __vector_irq:
 	sub r14, r14, #4
 	stmfd r13!, {r0-r3, r14}
@@ -109,7 +147,12 @@ __vector_irq:
 	ldmfd r13!, {r0-r3, pc}^
 
 __vector_fiq:
-	nop
+	sub r14, r14, #4
+	stmfd r13!, {r0-r3, r14}
+
+	bl common_fiq_handler
+
+	ldmfd r13!, {r0-r3, pc}^
 
 .globl _enable_interrupts
 _enable_interrupts:
@@ -154,10 +197,23 @@ invalidate_tlbs:
 
 .globl PUT32
 PUT32:
-	str r1, [r0]
-	bx lr
+    str r1,[r0]
+    bx lr
+
+.globl PUT16
+PUT16:
+    strh r1,[r0]
+    bx lr
 
 .globl GET32
 GET32:
-	ldr r0, [r0]
-	bx lr
+    ldr r0,[r0]
+    bx lr
+
+.globl BRANCHTO
+BRANCHTO:
+    bx r0
+
+.globl dummy
+dummy:
+    bx lr

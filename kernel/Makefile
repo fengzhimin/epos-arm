@@ -8,7 +8,7 @@ all:
 	make $(PROG).img
 	mountU.sh
 
-LDFLAGS = -mcpu=arm1176jzf-s -fpic -ffreestanding
+LDFLAGS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding
 OBJS =	entry.o \
 	timer.o machdep.o task.o \
 	page.o startup.o frame.o kmalloc.o \
@@ -17,10 +17,11 @@ OBJS += ../lib/string.o ../lib/memcpy.o \
 		../lib/memset.o  ../lib/tlsf/tlsf.o
 
 $(PROG).img: $(PROG).elf
+	$(OBJDUMP) -D $(PROG).elf > $(PROG).list
 	$(OBJCOPY) $^ -O binary $@
 
-$(PROG).elf: $(OBJS)
-	$(CC) -T ldscript.in -o$@ -ffreestanding -O2 -nostdlib $(OBJS)
+$(PROG).elf: $(OBJS) ldscript.in
+	$(LD) $(OBJS) -T ldscript.in -o $@
 
 $(OBJS):../include/*.h ../include/sys/*.h
 

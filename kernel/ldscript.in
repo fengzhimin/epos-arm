@@ -23,12 +23,12 @@ OUTPUT_ARCH(arm)
 
 ENTRY(_entry)
 SECTIONS {
-  . = 0x8000;
+  . = 0xC0008000;
   .text : {
     *(.text)
   }
 
-  . = ALIGN(4096);
+  . = ALIGN(4);
   .rodata : {
     *(.rodata)
   }
@@ -38,7 +38,7 @@ SECTIONS {
   .data : {
     *(.data)
   }
-  . = ALIGN(4096);
+  . = ALIGN(4);
   _edata = .;
 
   .bss : {
@@ -46,6 +46,6 @@ SECTIONS {
     *(COMMON)
   }
 
-  . = ALIGN(4096);
+  . = ALIGN(4);
   _end = .;
 }
