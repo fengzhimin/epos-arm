@@ -26,8 +26,10 @@ void (*g_intr_vector[NR_IRQ])(uint32_t irq, struct context *ctx);
 /*可用的物理内存区域*/
 uint32_t g_ram_zone[RAM_ZONE_LEN];
 
-uint32_t *PT  = (uint32_t *)0xbff00000, //页表的指针
-         *PTD = (uint32_t *)0xbfdff000; //页目录的指针
+extern unsigned int _end;
+
+uint32_t *PTD = NULL; //页目录的指针
+uint32_t *PT  = NULL;  //页表的指针
 
 /*默认的中断处理程序*/
 void isr_default(uint32_t irq, struct context *ctx)

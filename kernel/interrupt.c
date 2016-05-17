@@ -1,5 +1,7 @@
 #include "uart.h"
 #include "timer.h"
+#include "machdep.h"
+#include "string.h"
 
 extern arm_timer_t *ArmTimer;
 
@@ -17,42 +19,34 @@ void common_swi_handler(void)
 	uart_puts(_ch);
 }
 
-void common_pref_handler(void)
+void common_pref_handler(uint32_t vaddr, uint32_t code)
 {
 	char *_ch = "prefetch interrupts\r\n";
 	uart_puts(_ch);
-	unsigned int register_value[8];
 
-	asm(
-					"str r0, %0\n"
-					"str r1, %1\n"
-					"str r2, %2\n"
-					"str r3, %3\n"
-					"str r4, %4\n"
-					"str r13, %5\n"
-					"str r14, %6\n"
-					"str r15, %7\n"
-					: "=m"(register_value[0]), "=m"(register_value[1]), "=m"(register_value[2]),
-					  "=m"(register_value[3]), "=m"(register_value[4]), "=m"(register_value[5]),
-						"=m"(register_value[6]), "=m"(register_value[7])
-	);
-
-	int i;
 	char *_temp = "0000000000\r\n";
-	for(i = 0; i < 8; i++)
-	{
-			HexToString(register_value[i], _temp);
-			uart_puts(_temp);
-	}
+	HexToString(vaddr, _temp);
+	uart_puts("page fault address:");
+	uart_puts(_temp);
+	HexToString(code, _temp);
+	uart_puts("page fault code:");
+	uart_puts(_temp);
 
-		sleep(5000);
+	sleep(5000);
 }
 
-void common_Dabt_handler(void)
+void common_Dabt_handler(uint32_t vaddr, uint32_t code)
 {
-	sleep(500);
 	char *_ch = "data abort interrupts\r\n";
 	uart_puts(_ch);
+	char *_temp = "0000000000\r\n";
+	HexToString(vaddr, _temp);
+	uart_puts("page fault address:");
+	uart_puts(_temp);
+	HexToString(code, _temp);
+	uart_puts("page fault code:");
+	uart_puts(_temp);
+	sleep(500);
 }
 
 void common_res_handler(void)
@@ -62,21 +56,15 @@ void common_res_handler(void)
 	uart_puts(_ch);
 }
 
-void common_irq_handler(void)
+void common_irq_handler(struct context *cf)
 {
-	//sleep(500);
+	//ArmTimer->Control = ArmTimer->Control | ARMTIMER_CTRL_INT_DISABLE;
 	ArmTimer->IRQClear = 0x0;
-	char *_ch = "timer interrupts\r\n";
-	uart_puts(_ch);
-	unsigned int register_value;
 
-	asm(
-					"str r15, %0\n"
-					: "=m"(register_value)
-	);
-	char *_temp = "0000000000\r\n";
-	HexToString(register_value, _temp);
-	uart_puts(_temp);
+	uart_puts("timer interrupts\r\n");
+	printfContext(cf);
+	uart_puts("timer interrupts end!\r\n");
+	//ArmTimer->Control = ArmTimer->Control | ARMTIMER_CTRL_INT_ENABLE;
 }
 
 

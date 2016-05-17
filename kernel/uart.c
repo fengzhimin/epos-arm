@@ -80,7 +80,7 @@ void uart_write(const unsigned char* buffer, int size)
 
 void uart_puts(const char* str)
 {
-        uart_write((const unsigned char*) str, strlen(str));
+    uart_write((const unsigned char*) str, strlen(str));
 }
 
 void IntToString(unsigned int _int, char * _char)
@@ -107,4 +107,47 @@ void HexToString(unsigned int _int, char *_char)
       _char[i] = 'A'+_temp-0xA;
     _int = _int >> 4;
   }
+}
+
+void printfContext(struct context *cf)
+{
+  char *_temp = "0000000000\r\n";
+	HexToString((unsigned int)(cf->cf_spsr), _temp);
+  uart_puts("  cf_spsr="); uart_puts(_temp);
+	HexToString(cf->cf_r0, _temp);
+  uart_puts("    cf_r0="); uart_puts(_temp);
+	HexToString(cf->cf_r1, _temp);
+  uart_puts("    cf_r1="); uart_puts(_temp);
+	HexToString(cf->cf_r2, _temp);
+  uart_puts("    cf_r2="); uart_puts(_temp);
+	HexToString(cf->cf_r3, _temp);
+  uart_puts("    cf_r3="); uart_puts(_temp);
+	HexToString(cf->cf_r4, _temp);
+  uart_puts("    cf_4="); uart_puts(_temp);
+	HexToString(cf->cf_r5, _temp);
+  uart_puts("    cf_r5="); uart_puts(_temp);
+	HexToString(cf->cf_r6, _temp);
+  uart_puts("    cf_r6="); uart_puts(_temp);
+	HexToString(cf->cf_r7, _temp);
+  uart_puts("    cf_r7="); uart_puts(_temp);
+	HexToString(cf->cf_r8, _temp);
+  uart_puts("    cf_r8="); uart_puts(_temp);
+	HexToString(cf->cf_r9, _temp);
+  uart_puts("    cf_r9="); uart_puts(_temp);
+	HexToString(cf->cf_r10, _temp);
+  uart_puts("   cf_r10="); uart_puts(_temp);
+	HexToString(cf->cf_r11, _temp);
+  uart_puts("   cf_r11="); uart_puts(_temp);
+	HexToString(cf->cf_r12, _temp);
+  uart_puts("   cf_r12="); uart_puts(_temp);
+	HexToString(cf->cf_usr_sp, _temp);
+  uart_puts("cf_usr_sp="); uart_puts(_temp);
+	HexToString(cf->cf_usr_lr, _temp);
+  uart_puts("cf_usr_lr="); uart_puts(_temp);
+	HexToString(cf->cf_svc_sp, _temp);
+  uart_puts("cf_svc_sp="); uart_puts(_temp);
+	HexToString(cf->cf_svc_lr, _temp);
+  uart_puts("cf_svc_lr="); uart_puts(_temp);
+	HexToString(cf->cf_pc, _temp);
+  uart_puts("    cf_pc="); uart_puts(_temp);
 }

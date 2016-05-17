@@ -24,6 +24,7 @@
 #include <inttypes.h>
 #include <time.h>
 #include "machdep.h"
+#include "frame.h"
 
 /*中断向量表*/
 extern void (*g_intr_vector[])(uint32_t irq, struct context *ctx);
@@ -117,13 +118,13 @@ void syscall(struct context *ctx);
  */
 #define VADDR(pdi, pti) ((uint32_t)(((pdi)<<PGDR_SHIFT)|((pti)<<PAGE_SHIFT)))
 
-#define KERN_MAX_ADDR VADDR(1023, 1023)
-#define KERN_MIN_ADDR VADDR(767, 767)
-#define USER_MAX_ADDR VADDR(767, 0)
+#define KERN_MAX_ADDR VADDR(0xFFF, 0xFF)
+#define KERN_MIN_ADDR VADDR(0xC00, 0x0)
+#define USER_MAX_ADDR VADDR(0xBFF, 0)
 #define USER_MIN_ADDR VADDR(1, 0)
 
 #define KERNBASE  VADDR(0xC00, 0)
-#define R(x) ((x)+KERNBASE)
+#define R(x) ((x)-KERNBASE)
 
 #define NR_KERN_PAGETABLE 20
 
@@ -135,7 +136,6 @@ void syscall(struct context *ctx);
 /**
  * `PT', `PTD' and `vtopte' come from FreeBSD
  */
-extern uint8_t   end;
 extern uint32_t *PT;
 extern uint32_t *PTD;
 #define vtopte(va) (PT+((va)>>PAGE_SHIFT))

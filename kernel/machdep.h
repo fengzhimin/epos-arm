@@ -22,6 +22,7 @@
 
 #include <sys/types.h>
 #include "cpu.h"
+#include "frame.h"
 
 /**
  * `struct segment_descriptor' comes from FreeBSD
@@ -65,27 +66,26 @@ struct fpu {
 #define IRQ_FDC       6
 #define NR_IRQ        16
 
-struct context {
-    uint16_t   es, : 16; /* 0*/
-    uint16_t   ds, : 16; /* 4*/
-    uint16_t   fs, : 16; /* 8*/
-    uint32_t  edi;       /*12*/
-    uint32_t  esi;       /*16*/
-    uint32_t  ebp;       /*20*/
-    uint32_t  isp;       /*24*/
-    uint32_t  ebx;       /*28*/
-    uint32_t  edx;       /*32*/
-    uint32_t  ecx;       /*36*/
-    uint32_t  eax;       /*40*/
-    uint32_t  exception; /*44*/
-    uint32_t  errorcode; /*48*/
-    /* below defined in x86 hardware */
-    uint32_t  eip;       /*52*/
-    uint16_t   cs, : 16; /*56*/
-    uint32_t  eflags;    /*60*/
-    /* below only when crossing rings */
-    uint32_t  esp;       /*64*/
-    uint16_t   ss, : 16; /*68*/
+struct context{
+	unsigned int cf_spsr;
+  unsigned int cf_r0;
+  unsigned int cf_r1;
+  unsigned int cf_r2;
+	unsigned int cf_r3;
+	unsigned int cf_r4;
+	unsigned int cf_r5;
+	unsigned int cf_r6;
+	unsigned int cf_r7;
+	unsigned int cf_r8;
+	unsigned int cf_r9;
+	unsigned int cf_r10;
+	unsigned int cf_r11;
+	unsigned int cf_r12;
+	unsigned int cf_usr_sp;
+	unsigned int cf_usr_lr;
+	unsigned int cf_svc_sp;
+	unsigned int cf_svc_lr;
+	unsigned int cf_pc;
 };
 
 #define STACK_PUSH(sp, value) do { \

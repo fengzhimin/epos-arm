@@ -1,6 +1,8 @@
 #ifndef __UART_H__
 #define __UART_H__
 
+#include "machdep.h"
+
 #define AUX_ENABLES     0xC1215004
 #define AUX_MU_IO_REG   0xC1215040
 #define AUX_MU_IER_REG  0xC1215044
@@ -29,5 +31,8 @@ void uart_write(const unsigned char* buffer, int size);
 void uart_puts(const char* str);
 void IntToString(unsigned int _int, char *_char);
 void HexToString(unsigned int _int, char *_char);
+void printfContext(struct context *cf);
+extern void cli();
+extern void sti();
 
 #endif

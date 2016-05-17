@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "kernel.h"
+#include "frame.h"
 
 int g_resched;
 struct tcb *g_task_head;

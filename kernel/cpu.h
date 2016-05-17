@@ -22,25 +22,9 @@
 
 #include <inttypes.h>
 
+extern void cli();
+extern void sti();
 
-static void cli()
-{
-    asm volatile(
-      "mrs r0, cpsr\n\t"
-    	"bic r0, r0, #0x80\n\t"
-    	"msr cpsr_c, r0\n\t"
-    	"mov pc, lr\n\t"
-    );
-}
-static void sti()
-{
-    asm volatile(
-      "mrs r0, cpsr\n\t"
-      "orr r0, r0, #0x80\n\t"
-      "msr cpsr_c, r0\n\t"
-      "mov pc, lr\n\t"
-    );
-}
 /*
 static __inline void
 cpu_idle()
@@ -85,7 +69,7 @@ invltlb(void)
 #define PAGE_SIZE   (1<<PAGE_SHIFT)
 #define PAGE_MASK   (PAGE_SIZE-1)
 #define PAGE_TRUNCATE(x)  ((x)&(~PAGE_MASK))
-#define PAGE_ROUNDUP(x)   (((x)+PAGE_MASK)&(~PAGE_MASK))
+#define PAGE_ROUNDUP(x)   (((x)+(0x1<<14))&(0xffffc000))
 
 #define PTE_V   0x001 /* Valid */
 #define PTE_W   0x002 /* Read/Write */

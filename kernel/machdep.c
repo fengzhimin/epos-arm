@@ -33,7 +33,8 @@
 #define __XSTRING(x)    __STRING(x)     /* expand x, then stringify */
 
 extern unsigned int _end;
-extern void _enable_interrupts();
+extern void cli();
+extern void sti();
 
 /*计算机启动时，自1970-01-01 00:00:00 +0000 (UTC)以来的秒数*/
 time_t g_startup_time;
@@ -105,10 +106,10 @@ static uint32_t init_paging(uint32_t physfree)
         physfree += (1<<10);
     }
 
-    /*单独给中断向量表分配一张小页表*/
+    /*单独给中断向量表分配一张小页表
     pgdir[0xFFF] = physfree|PTE_V;
     memset((void *)physfree, 0, (1<<10));
-    physfree += (1<<10);
+    physfree += (1<<10);*/
 
     /*设置恒等隐射，填充小页表 隐射物理地址为[0, &_end] 虚拟地址[0, &_end] [KERNBASE, R(&_end)]*/
     for(i = 0; i < (PAGE_ROUNDUP(physfree)>>12); i++)
@@ -192,21 +193,18 @@ void cstart(uint32_t magic, uint32_t mbi)
 {
     //uint32_t end = PAGE_ROUNDUP(R((uint32_t)(&_end)))+(0x1<<14);
     unsigned int end = (unsigned int)(((&_end+(0x1<<14))))&0xffffc000;
-    unsigned int * page_base = (unsigned int *)(end)-0xC0000000;
+    PTD = (unsigned int *)(end);
+    PT = (uint32_t*)((uint32_t)(PTD)+(0x1<<14));
 
     /*
      * 机器相关（Machine Dependent）的初始化
      */
     md_startup(mbi, end-0xC0000000);
 
-    unsigned int physfree = end;
-
     uart_init();
     char *_ch1 = "0x00000000\r\n";
-    //HexToString(physfree, _ch1);
-    //uart_puts(_ch1);
     init_arm_timer(Kernel_1Hz);
-    _enable_interrupts();
+    cli();
 
     /*
      * 分页已经打开，切换到虚拟地址运行
@@ -214,70 +212,39 @@ void cstart(uint32_t magic, uint32_t mbi)
      /*重定位内核*/
      asm (
        "add sp, sp, #0xC0000000\n\t"
+       "add r11, r11, #0xC0000000\n\t"
      );
 
-      unsigned int register_value[16];
+     int i;
 
-    	asm(
-    					"str r0, %0\n"
-              "str r1, %1\n"
-              "str r2, %2\n"
-              "str r3, %3\n"
-              "str r4, %4\n"
-              "str r5, %5\n"
-              "str r6, %6\n"
-              "str r7, %7\n"
-              "str r8, %8\n"
-              "str r9, %9\n"
-              "str r10, %10\n"
-              "str r11, %11\n"
-              "str r12, %12\n"
-              "str r13, %13\n"
-              "str r14, %14\n"
-              "str r15, %15\n"
-    					: "=m"(register_value[0]), "=m"(register_value[1]),"=m"(register_value[2]),
-                "=m"(register_value[3]), "=m"(register_value[4]),"=m"(register_value[5]),
-                "=m"(register_value[6]), "=m"(register_value[7]),"=m"(register_value[8]),
-                "=m"(register_value[9]), "=m"(register_value[10]),"=m"(register_value[11]),
-                "=m"(register_value[12]), "=m"(register_value[13]),"=m"(register_value[14]),
-                "=m"(register_value[15])
-    	);
-    	char *_temp = "0000000000\r\n";
-      int i;
-      for(i = 0; i < 16; i++)
-      {
-        HexToString(register_value[i], _temp);
-      	uart_puts(_temp);
-      }
-
-      /* 清除恒等隐射 */
-      for(i= 1; i < NR_KERN_PAGETABLE; i++)
-        page_base[i] = 0;
+    /* 清除恒等隐射 */
+    for(i= 1; i < NR_KERN_PAGETABLE; i++)
+      PTD[i] = 0;
 
     while(1)
     {
       for(i = 0; i < 20; i++)
       {
-        HexToString(page_base[i], _ch1);
+        HexToString(PTD[i], _ch1);
         uart_puts(_ch1);
       }
 
       for(i = 0; i < 20; i++)
       {
-        HexToString(page_base[i+0xC00], _ch1);
+        HexToString(PTD[i+0xC00], _ch1);
         uart_puts(_ch1);
       }
+      asm (
+        "mov pc, #0xB0000000\n\t"
+      );
+      uint32_t *_pagefaultAddr = (uint32_t *)0xB0000000;
+      *_pagefaultAddr = 0x1;
+      //uint32_t _pagefautData = (uint32_t)(*_pagefaultAddr);
 
       sleep(500);
       //sti();
     }
 
-    /*
-     * 内核已经被重定位到链接地址，取消恒等映射
-
-    for(i = 0; i < NR_KERN_PAGETABLE; i++)
-        PTD[i] = 0;
-     */
 
     /*
      * 取消了1MiB以内、除文本显存以外的虚拟内存映射

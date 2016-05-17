@@ -18,6 +18,8 @@
 #
 # $Id: entry.S,v 1.1.1.1 2007/06/22 03:20:53 hmj Exp $
 
+#include "frame.h"
+
 .globl _entry
 
 .equ    CPSR_MODE_USER,         		0x10
@@ -117,6 +119,8 @@ __vector_swi:
 __vector_prefetch_abort:
 	sub r14, r14, #4
 	stmfd r13!, {r0-r3, r14}
+  mrc  p15,0, r0, c6, c0, 2         // get IFAR
+  mrc  p15,0, r1, c5, c0, 1        //  get IFSR
 
 	bl common_pref_handler
 
@@ -125,6 +129,8 @@ __vector_prefetch_abort:
 __vector_data_abort:
 	sub r14, r14, #4
 	stmfd r13!, {r0-r3, r14}
+  mrc p15, 0, r0, c6, c0, 0         // get DFAR
+  MRC p15, 0, r1, c5, c0, 0         // get DFSR
 
 	bl common_Dabt_handler
 
@@ -139,12 +145,12 @@ __vector_reserved:
 	ldmfd r13!, {r0-r3, pc}^
 
 __vector_irq:
-	sub r14, r14, #4
-	stmfd r13!, {r0-r3, r14}
+  PUSHFRAMEINSVC
+  mov		r0, sp
 
-	bl common_irq_handler
+  bl		common_irq_handler
 
-	ldmfd r13!, {r0-r3, pc}^
+  PULLFRAMEANDEXIT
 
 __vector_fiq:
 	sub r14, r14, #4
@@ -154,16 +160,16 @@ __vector_fiq:
 
 	ldmfd r13!, {r0-r3, pc}^
 
-.globl _enable_interrupts
-_enable_interrupts:
+.globl cli
+cli:
 	mrs r0, cpsr
 	bic r0, r0, #0x80
 	msr cpsr_c, r0
 
 	mov pc, lr
 
-.globl _disable_interrupts
-_disable_interrupts:
+.globl sti
+sti:
 	mrs r0, cpsr
 	orr r0,r0,#0x80
 	msr cpsr_c,r0
