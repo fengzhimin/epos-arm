@@ -111,6 +111,7 @@ void HexToString(unsigned int _int, char *_char)
 
 void printfContext(struct context *cf)
 {
+  /*
   char *_temp = "0000000000\r\n";
 	HexToString((unsigned int)(cf->cf_spsr), _temp);
   uart_puts("  cf_spsr="); uart_puts(_temp);
@@ -150,4 +151,5 @@ void printfContext(struct context *cf)
   uart_puts("cf_svc_lr="); uart_puts(_temp);
 	HexToString(cf->cf_pc, _temp);
   uart_puts("    cf_pc="); uart_puts(_temp);
+  */
 }

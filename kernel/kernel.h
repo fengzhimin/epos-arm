@@ -91,6 +91,40 @@ struct tcb {
 #define TASK_SIGNATURE 0x20160201
 };
 
+
+#define	MAX_rank	 3		//	共四个优先级: 0 1 2 3
+
+//任务状态
+typedef enum
+{
+	STATUS_NULL ,		//空
+	READY,						//就绪
+	RUN, 							//正在运行
+	WAIT,							//阻塞
+	SUSPEND,				//挂起
+	DEAD							//未加入调度函数管理
+}TASK_STATUS_ENUM;
+
+//任务信息
+typedef struct {
+		unsigned char	rank;								 /*优先级*/
+		TASK_STATUS_ENUM status;	         /*任务状态*/
+		unsigned int task_func;						/*函数地址*/
+		unsigned int	TRID;								/*Task Ready ID*/
+}TASK_INFO;
+
+TASK_INFO task_info[256];			    /*任务信息*/
+
+struct tcb1{
+  unsigned int kstack;
+  unsigned int tid;
+  int          schedule_lock;
+};
+
+struct context task_table[256];
+unsigned char task_stack[256][1024];
+
+
 #define TASK_KSTACK 0           /*=offsetof(struct tcb, kstack)*/
 
 extern struct tcb *g_task_running;

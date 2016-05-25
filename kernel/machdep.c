@@ -82,6 +82,60 @@ int sys_putchar(int c)
     return c;
 }
 
+void task_idle0(void)
+{
+  while(1)
+  {
+    int i;
+    for(i = 0; i < 10; i++)
+    {
+      uart_puts("Hello first task create success!");
+      uart_putc(i+'0');
+      uart_puts("\r\n");
+    }
+  }
+}
+
+void task_idle1(void)
+{
+  int i;
+  while(1)
+  {
+    for(i = 0; i < 10; i++)
+    {
+      uart_puts("Hello second task create success!");
+      uart_putc(i+'0');
+      uart_puts("\r\n");
+    }
+  }
+}
+
+void task_idle2(void)
+{
+  int i;
+  while(1)
+  {
+    for(i = 0; i < 10; i++)
+    {
+      uart_puts("Hello third task create success!");
+      uart_putc(i+'0');
+      uart_puts("\r\n");
+    }
+  }
+}
+
+void task_idle3(void)
+{
+  int i;
+  for(i = 0; i < 10; i++)
+  {
+    uart_puts("Hello fourth task create success!");
+    uart_putc(i+'0');
+    uart_puts("\r\n");
+  }
+  task_delete();
+}
+
 /**
  * 初始化分页子系统
  */
@@ -203,6 +257,20 @@ void cstart(uint32_t magic, uint32_t mbi)
 
     uart_init();
     char *_ch1 = "0x00000000\r\n";
+    task_init();
+  	unsigned char rank = MAX_rank ;
+  	unsigned int task_func = (unsigned int)task_idle0;
+  	unsigned char TID = task_create( rank , task_func);
+  	task_run(TID);
+  	task_func = (unsigned int)task_idle1;
+  	TID = task_create( rank , task_func);
+  	task_run(TID);
+  	task_func = (unsigned int)task_idle2;
+  	TID = task_create( rank , task_func);
+  	task_run(TID);
+    task_func = (unsigned int)task_idle3;
+  	TID = task_create( rank , task_func);
+  	task_run(TID);
     init_arm_timer(Kernel_1Hz);
     cli();
 
@@ -234,6 +302,7 @@ void cstart(uint32_t magic, uint32_t mbi)
         HexToString(PTD[i+0xC00], _ch1);
         uart_puts(_ch1);
       }
+      /*
       asm (
         "mov pc, #0xB0000000\n\t"
       );
@@ -243,6 +312,7 @@ void cstart(uint32_t magic, uint32_t mbi)
 
       sleep(500);
       //sti();
+      */
     }
 
 
