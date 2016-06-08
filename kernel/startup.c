@@ -28,8 +28,8 @@ uint32_t g_ram_zone[RAM_ZONE_LEN];
 
 extern unsigned int _end;
 
-uint32_t *PTD = NULL; //页目录的指针
-uint32_t *PT  = NULL;  //页表的指针
+uint32_t *PTD = (uint32_t*)KERN_MIN_ADDR; //页目录的指针
+uint32_t *PT  = (uint32_t*)USER_MAX_ADDR;  //页表的指针
 
 /*默认的中断处理程序*/
 void isr_default(uint32_t irq, struct context *ctx)

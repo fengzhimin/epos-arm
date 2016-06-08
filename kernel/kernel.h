@@ -153,8 +153,8 @@ void syscall(struct context *ctx);
 #define VADDR(pdi, pti) ((uint32_t)(((pdi)<<PGDR_SHIFT)|((pti)<<PAGE_SHIFT)))
 
 #define KERN_MAX_ADDR VADDR(0xFFF, 0x0)
-#define KERN_MIN_ADDR VADDR(0xC00, 0x0)
-#define USER_MAX_ADDR VADDR(0xC00, 0)
+#define KERN_MIN_ADDR VADDR(0xC00, 0x04)
+#define USER_MAX_ADDR VADDR(0xBFC, 0x00)
 #define USER_MIN_ADDR VADDR(4, 0)
 
 #define KERNBASE  VADDR(0xC00, 0)
@@ -170,8 +170,8 @@ void syscall(struct context *ctx);
 /**
  * `PT', `PTD' and `vtopte' come from FreeBSD
  */
-extern uint32_t *PT;
-extern uint32_t *PTD;
+ extern uint32_t *PT;
+ extern uint32_t *PTD;
 #define vtopte(va) (PT+((va)>>PAGE_SHIFT))
 #define vtop(va) (((*vtopte(va))&(~PAGE_MASK))|((va)&PAGE_MASK))
 

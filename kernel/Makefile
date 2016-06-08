@@ -1,6 +1,7 @@
 include ../Makefile.inc
 
 CPPFLAGS= -I../include
+CFLAGS=-fno-builtin
 
 PROG=		kernel
 
