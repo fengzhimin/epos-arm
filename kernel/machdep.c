@@ -84,57 +84,22 @@ int sys_putchar(int c)
 
 void task_idle0(void)
 {
-  while(1)
-  {
-    int i;
-    for(i = 0; i < 10; i++)
-    {
-      uart_puts("Hello first task create success!");
-      uart_putc(i+'0');
-      uart_puts("\r\n");
-    }
-  }
+  printk("first task create success!\r\n");
+  while(1);
 }
 
 void task_idle1(void)
 {
-  int i;
-  while(1)
-  {
-    for(i = 0; i < 10; i++)
-    {
-      uart_puts("Hello second task create success!");
-      uart_putc(i+'0');
-      uart_puts("\r\n");
-    }
-  }
+  printk("second task create success!\r\n");
+  while(1);
 }
 
 void task_idle2(void)
 {
-  int i;
-  while(1)
-  {
-    for(i = 0; i < 10; i++)
-    {
-      uart_puts("Hello third task create success!");
-      uart_putc(i+'0');
-      uart_puts("\r\n");
-    }
-  }
+  printk("third task create success!\r\n");
+  while(1);
 }
 
-void task_idle3(void)
-{
-  int i;
-  for(i = 0; i < 10; i++)
-  {
-    uart_puts("Hello fourth task create success!");
-    uart_putc(i+'0');
-    uart_puts("\r\n");
-  }
-  task_delete();
-}
 
 /**
  * 初始化分页子系统
@@ -256,7 +221,10 @@ void cstart(uint32_t magic, uint32_t mbi)
     md_startup(mbi, end-0xC0000000);
 
     uart_init();
-    char *_ch1 = "0x00000000\r\n";
+    printk("Welcome to ARM-EPOS\r\n");
+    printk("Copyright (C) 2005-2015 MingJian Hong<hongmingjian@gmail.com>\r\n");
+    printk("Author: fengzhimin \r\n");
+    printk("All rights reserved.\r\n\r\n");
     task_init();
   	unsigned char rank = MAX_rank ;
   	unsigned int task_func = (unsigned int)task_idle0;
@@ -268,12 +236,8 @@ void cstart(uint32_t magic, uint32_t mbi)
   	task_func = (unsigned int)task_idle2;
   	TID = task_create( rank , task_func);
   	task_run(TID);
-    task_func = (unsigned int)task_idle3;
-  	TID = task_create( rank , task_func);
-  	task_run(TID);
     init_arm_timer(Kernel_1Hz);
     cli();
-
     /*
      * 分页已经打开，切换到虚拟地址运行
      */
@@ -282,38 +246,11 @@ void cstart(uint32_t magic, uint32_t mbi)
        "add sp, sp, #0xC0000000\n\t"
        "add r11, r11, #0xC0000000\n\t"
      );
-
      int i;
-
     /* 清除恒等隐射 */
     for(i= 1; i < NR_KERN_PAGETABLE; i++)
       PTD[i] = 0;
-
-    while(1)
-    {
-      for(i = 0; i < 20; i++)
-      {
-        HexToString(PTD[i], _ch1);
-        uart_puts(_ch1);
-      }
-
-      for(i = 0; i < 20; i++)
-      {
-        HexToString(PTD[i+0xC00], _ch1);
-        uart_puts(_ch1);
-      }
-      /*
-      asm (
-        "mov pc, #0xB0000000\n\t"
-      );
-      uint32_t *_pagefaultAddr = (uint32_t *)0xB0000000;
-      *_pagefaultAddr = 0x1;
-      //uint32_t _pagefautData = (uint32_t)(*_pagefaultAddr);
-
-      sleep(500);
-      //sti();
-      */
-    }
+    while(1);
 
 
     /*

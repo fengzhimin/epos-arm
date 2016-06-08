@@ -152,10 +152,10 @@ void syscall(struct context *ctx);
  */
 #define VADDR(pdi, pti) ((uint32_t)(((pdi)<<PGDR_SHIFT)|((pti)<<PAGE_SHIFT)))
 
-#define KERN_MAX_ADDR VADDR(0xFFF, 0xFF)
+#define KERN_MAX_ADDR VADDR(0xFFF, 0x0)
 #define KERN_MIN_ADDR VADDR(0xC00, 0x0)
-#define USER_MAX_ADDR VADDR(0xBFF, 0)
-#define USER_MIN_ADDR VADDR(1, 0)
+#define USER_MAX_ADDR VADDR(0xC00, 0)
+#define USER_MIN_ADDR VADDR(4, 0)
 
 #define KERNBASE  VADDR(0xC00, 0)
 #define R(x) ((x)-KERNBASE)

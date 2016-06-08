@@ -289,16 +289,16 @@ int do_page_fault(struct context *ctx, uint32_t vaddr, uint32_t code)
     uint32_t prot;
 
 #if VERBOSE
-    printk("PF:0x%08x(0x%01x)", vaddr, code);
+    //printk("PF:0x%08x(0x%01x)", vaddr, code);
 #endif
 
     /*检查地址是否合法*/
     prot = page_prot(vaddr);
     if(prot == -1 || prot == VM_PROT_NONE) {
 #if !VERBOSE
-        printk("PF:0x%08x(0x%01x)", vaddr, code);
+        //printk("PF:0x%08x(0x%01x)", vaddr, code);
 #endif
-        printk("->ILLEGAL MEMORY ACCESS\r\n");
+        //printk("->ILLEGAL MEMORY ACCESS\r\n");
         return -1;
     }
 
@@ -325,23 +325,23 @@ int do_page_fault(struct context *ctx, uint32_t vaddr, uint32_t code)
         //    invlpg(vaddr);
 
 #if VERBOSE
-            printk("->0x%08x\r\n", *vtopte(vaddr));
+            //printk("->0x%08x\r\n", *vtopte(vaddr));
 #endif
 
             return 0;
         } else {
             /*物理内存已耗尽*/
 #if !VERBOSE
-            printk("PF:0x%08x(0x%01x)", vaddr, code);
+          //  printk("PF:0x%08x(0x%01x)", vaddr, code);
 #endif
-            printk("->OUT OF RAM\r\n");
+          //  printk("->OUT OF RAM\r\n");
         }
     } else {
         /*PTE有效，但页面保护引起PF*/
 #if !VERBOSE
-        printk("PF:0x%08x(0x%01x)", vaddr, code);
+        //printk("PF:0x%08x(0x%01x)", vaddr, code);
 #endif
-        printk("->PROTECTION VIOLATION\r\n");
+        //printk("->PROTECTION VIOLATION\r\n");
     }
 
     return -1;

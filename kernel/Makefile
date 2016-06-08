@@ -14,14 +14,15 @@ OBJS =	entry.o \
 	page.o startup.o frame.o kmalloc.o \
 	printk.o bitmap.o uart.o interrupt.o
 OBJS += ../lib/string.o ../lib/memcpy.o \
-		../lib/memset.o  ../lib/tlsf/tlsf.o
+		../lib/memset.o  ../lib/tlsf/tlsf.o \
+		../lib/snprintf.o
 
 $(PROG).img: $(PROG).elf
 	$(OBJDUMP) -D $(PROG).elf > $(PROG).list
 	$(OBJCOPY) $^ -O binary $@
 
 $(PROG).elf: $(OBJS) ldscript.in
-	$(LD) $(OBJS) -T ldscript.in -o $@
+	$(LD) $(OBJS) -L../lib/ -lgcc -T ldscript.in -o $@
 
 $(OBJS):../include/*.h ../include/sys/*.h
 
